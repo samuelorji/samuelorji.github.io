@@ -1,9 +1,11 @@
 ---
 layout: post
 title: "Markup: Syntax Highlighting"
+hide: true
 author: mmistakes
 tags: [Highlight, Markdown]
 categories: Syntax
+hide: true
 ---
 
 Syntax highlighting[^1] is a feature that displays source code. 

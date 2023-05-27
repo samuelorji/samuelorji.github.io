@@ -37,7 +37,7 @@ Enough talk, Let’s see some code. To begin, Let’s model our Todo, and the ki
 
 > P.S, I’m going to be overly explicit and break some single expressions into multiple expressions to drive some points home.
 
-{% highlight scala %}
+```scala
 sealed trait Todo  
 case class TodoName(name : String) extends Todo  
 case class TodoItem(id :Int , name :String) extends Todo  
@@ -51,13 +51,13 @@ case class QueryError(errorMsg : String) extends TodoError
   
 //describes errors such as lost database connections  
 case class DbError(errorMsg : String) extends TodoError
-{% endhighlight %}
+```
 
 We’ve described our data model for our application, what this implies is that our program must either return a success value of type `Todo` or an error type `TodoError`.
 
 Now, since we are going to use a database let’s model our database. It’s a trait that describes an effect.
 
-{% highlight scala %}
+```scala
 object Database {  
   trait Service {  
     def create(todo : TodoName) : IO[TodoError,Unit]  
@@ -70,7 +70,7 @@ object Database {
 trait Database {  
   def database: Database.Service  
 }
-{% endhighlight %}
+```
 
 If you didn’t check out the docs, the data type IO may seem weird, didn’t we say that all effects in `ZIO` start with `ZIO[_, _, _]`, well, `IO[E,A]` is a type alias which according to the docs represents an effect that has no requirements, and may fail with an `E`, or succeed with an `A`, because let’s face it, a database doesn’t need any requirement, you supply it a query and it either returns what you are looking for or returns an error. Now we’ve described our database operation as an effect.
 
@@ -78,7 +78,7 @@ If you didn’t check out the docs, the data type IO may seem weird, didn’t we
 
 The next thing which I believe will start tying things up is our API, which is also an effect. Remember I said, our program is composed of effects that are connected to each other in some way. We define an HTTP endpoint, which returns an effect that interacts with the database effect or some other effect.
 
-{% highlight scala %}
+```scala
 val getTodoByIdRoute_: Route = path("todo" / IntNumber) { id =>  
   get {  
     complete {  
@@ -91,13 +91,13 @@ val getTodoByIdRoute_: Route = path("todo" / IntNumber) { id =>
     }  
   }  
 }
-{% endhighlight %}
+```
 
 This route is for `GET` requests and we see that an ID is supplied. What I want to draw your attention to is the fact that we have an Application Controller whose return type isn’t a Future as I’m used to, but it’s an effect and what it describes is some computation that requires an object of type Database, and will either return an error of type `TodoError` or a result of type `TodoItem`. We’ll take a look at the `findTodoById` method in a bit, but you’ll see that we transformed that effect into another effect via the method `provide`. What that `provide` method did was simply fulfill the requirement for this effect by providing it with a database from scope of type `Database` needed for it to work. The result of that is an `IO[TodoError,TodoItem]` which having described before is an effect that has no requirement. When this effect is run, it doesn’t depend on anything to produce a result. Our controller initially returned an effect that needed a database, and we provided a database to that effect returning an effect that doesn’t have any requirement.
 
 Now let’s take a look at a snippet of the ApplicationController.
 
-{% highlight scala %}
+```scala
 object ApplicationController {  
   
   def addTodo(todo : TodoName) : ZIO[Database, TodoError, Unit] = {  
@@ -115,11 +115,11 @@ object ApplicationController {
  // other methods.   
 }
 
-{% endhighlight %}
+```
 
 Let’s look at the `findTodoById` method, let’s explain it’s implementation a bit, the first thing we see is the `ZIO.accessM` method, which according to the documentation _effectfully accesses the environment of the effect._ In other words, it takes the requirement that should ideally be passed into it and provides you with that requirement which you can then use to produce another effect. This database requirement was supplied in our case using the `provide` method in the HTTP Api, although there are other ways to do this. A more explicit way of looking at that piece of code is this.
 
-{% highlight scala %}
+```scala
 def findTodoById(id : Int): ZIO[Database, TodoError, TodoItem] = {  
   val effectfullyAccessDatabase =  ZIO._accessM[Database]  
     
@@ -129,7 +129,7 @@ def findTodoById(id : Int): ZIO[Database, TodoError, TodoItem] = {
   effectfullyAccessDatabase.apply(useDatabaseToFindTodo)  
     
 }
-{% endhighlight %}
+```
 
 The return type of the `accessM` method here, is a partially applied function of type `Database => ZIO[Database,TodoError,TodoItem]` but if you look closely you’ll see that the function I applied has a return type of `IO` not `ZIO`, If you remember that `IO[E,A]` is a type alias for `ZIO[Any, E, A]` and because the type environment type R is contravariant in its type parameter, we don’t get a compile error. You can clearly see how we have composed two effects, the ApplicationController effect, and the database effect.
 
@@ -163,7 +163,7 @@ Now let’s go back to our API, if you’re familiar with Akka Http, you know th
 
 To understand what I mean, Let’s see what the compiler says about this HTTP route, If I didn’t perform my so-called magic.
 
-{% highlight scala %}
+```scala
 val getTodoByIdRoute: Route = path("todo" / IntNumber) { id =>  
   get {  
     complete {  
@@ -176,7 +176,7 @@ val getTodoByIdRoute: Route = path("todo" / IntNumber) { id =>
     }  
   }  
 }
-{% endhighlight %}
+```
 
 The simplified error message my IDE shows is this:
 
@@ -192,26 +192,26 @@ Remember I said an effect is practically useless until it’s run, and when it�
 
 If you checked out the docs on marshalling, what I needed to do was define two marshallers, one from an error type `E` to an HttpResponse and another from a value type `A` to an HttpResponse also. If I tried to manually marshall my `IO` effect explicitly in the code, this is what I would have done in that GET request.
 
-{% highlight scala %}
+```scala
 val result = ....
 
 val httpResponse: Future[HttpResponse] =  
     Marshal_(result).to[HttpResponse]  
          
 complete(httpResponse) 
-{% endhighlight %} 
+``` 
   
 
 But if I do this, the compiler throws this error, `No implicits found for parameter m : Marshaller[IO[TodoError,TodoItem],HttpResponse]` which makes sense since the compiler does not know how to marshall an `IO` effect into an `HttpReponse`. To fix that, I defined the generic `implicit def ioEffectToMarshallable`, First thing, I call `foldM` on the effect I want to run, to generate a new effect based on either of its return value, I then pass these new effects into implicitly passed marshallers of each return type depending on the resulting value of the effect. Now I’ve generated a new effect that will either fail with a type `Throwable` or pass with a `List[Marshalling[HttpResponse]]` which for the sake of this article we will just call an `HttpResponse` . Now that we have our effect, it’s time to run it and to do that, as usual, there are other ways I could have done this, but I decided to extend the `[Runtime](https://zio.dev/docs/overview/overview_running_effects)` ZIO trait, which is something I need to run my effect to generate concrete a value `E` or `A` (In my circuit analogy, the Runtime will be my battery or energy source) . If you pay attention, you’ll see that it takes a type parameter Unit, that just implies that it can only supply Unit to any effect that it runs, which is cool as the effect I want to run doesn’t need any other dependency since it’s an IO effect, This wouldn’t have been the case if I needed some other dependency as the effect won’t run if the runtime didn’t supply the requirement. With that in mind, I was able to run the effect using `unsafeRunAsync` because I want this effect to be run asynchronously, so for each incoming request, the effect is created and then run by the Runtime. Next, I attached more or less a callback where I passed the resulting value to the `Promise` I had initially created. You may be wondering where the `m1` and `m2` values are, well the success marshaller that converts my `TodoItem` into an `HttpResponse` is handled by this very handy line of code which just helps you marshall what’s in brackets to an HttpResponse.
 
-{% highlight scala %}
+```scala
 implicit val todoItemFormatter = jsonFormat2(TodoItem)  
 implicit val todoNameFormatter = jsonFormat1(TodoName)
-{% endhighlight %}
+```
 
 The `m2` marshaller which marshalls my error of type `Throwable` into an HttpResponse is handled by this line of code, which basically transforms my `TodoError` into an HttpResponse, since `TodoError` extends `Throwable`, I can pass this marshaller to the where a `Throwable` is expected
 
-{% highlight scala %}
+```scala
 implicit val errorMarshaller: Marshaller[TodoError, HttpResponse] = {  
   Marshaller { implicit ec => error   =>  
        val response = generateHttpResponseFromError(error)  
@@ -219,11 +219,11 @@ implicit val errorMarshaller: Marshaller[TodoError, HttpResponse] = {
   
   }  
 }
-{% endhighlight %}
+```
 
 Now, writing this seems to fix the Http GET route, since we have now defined a marshaller for `IO` to `HttpResponse`, but if you pay attention, you’ll notice that we only have a marshaller of type `TodoItem` to `HttpResponse`, what if our effect when run, produces an `Int` or another random type, are we going to have to declare explicit marshallers for every type, surely, this is not a feasible solution. The effect below returns an `A` value of `Unit`, and I wasn’t ready to define a marshaller for Unit, here’s an example.
 
-{% highlight scala %}
+```scala
 put {  
      entity(Directives.as[TodoName]){todo =>  
      val resultingEffect: IO[TodoError, Unit] =                                   - ApplicationController.updateTodoById(id,todo).provide(repo)
@@ -231,11 +231,11 @@ put {
       complete(resultingEffect)  
         }  
       }
-{% endhighlight %}
+```
 
 I had to find a pretty straight forward way to define a single marshaller that can handle all cases. Now, didn’t we just write a marshaller that could solve the `GET` issue, but for some reason, It doesn’t work, It tells me that there is no marshaller of type `IO[TodoError,Unit]` in scope, which makes perfect sense as we only have a marshaller of type `IO[TodoError,TodoItem]` in scope. I’m gonna admit, I got stuck here for a while, so I tried to figure out a way of combining all my effects into a single effect type and defining a ‘marshaller’ for that type, and the easiest way was to create an effect that also included the complete method like this,
 
-{% highlight scala %}
+```scala
 put {  
   entity(Directives.as[TodoName]){todo =>  
     val resultingEffect: IO[TodoError, StandardRoute] =  
@@ -247,7 +247,7 @@ put {
   }  
 }
 
-{% endhighlight %}
+```
 
 Now, this way, if we can in someway generate a new effect that includes the call to `complete` , then all we have to do is define just one ‘marshaller’ for type `IO[TodoError,StandardResult]`, which we defined with this function.
 

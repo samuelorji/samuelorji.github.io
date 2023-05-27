@@ -18,7 +18,7 @@ To acquire and use a resource, we call `Resource.make` which has this type signa
 We see it takes the entity to acquire wrapped in a type constructor and the release function. The result of this is a Resource, that we can then call use on. Once it's done being used, the release function kicks in
 
 Let's take a simple and contrived example where we acquire and eventually release simple file api
-{% highlight scala %}
+```scala
 object ResourcesExample extends IOApp {
 
   trait FileApi {
@@ -47,7 +47,7 @@ object ResourcesExample extends IOApp {
     _               <- IO(println(s"Your welcome message is [${new String(welcomeMessage)}]"))
   } yield ExitCode.Success
 }
-{% endhighlight %}
+```
 
 The result of this program prints:
 
@@ -60,7 +60,7 @@ We easily see that our mock file api is closed immediately after use, even befor
 It's important to know that the release function of a resource is called even if it throws an exception while being used
 
 We could change our fil api exampe to throw an error:
-{% highlight scala %}
+```scala
  for {
     _               <- IO(println("Let's check out file for your welcome message"))
     welcomeMessage  <- fileResource.use { fileApi =>
@@ -68,7 +68,7 @@ We could change our fil api exampe to throw an error:
     }
     _               <- IO(println(s"Your welcome message is [${new String(welcomeMessage)}]"))
   } yield ExitCode.Success
-{% endhighlight %}
+```
 We still see that the resource is closed despite the exception being thrown
 
 Let's check out file for your welcome message
@@ -80,7 +80,7 @@ java.lang.Exception: are we gonna be released ????
 Resources also compose. since they are functional constructs, we can map or flatMap over them. Which means we can construct a new resource from a previous resource.
 
 We can also use a resource within another resource:
-{% highlight scala %}
+```scala
   val intResource: Resource[IO, Int] = Resource.make(IO(42))(x => IO(println(s"releasing $x ")) *> IO.unit)
   val stringResource: Resource[IO, String] = Resource.make(IO("thor"))(x => IO(println(s"releasing $x ")) *>  IO.unit)
 
@@ -92,4 +92,4 @@ We can also use a resource within another resource:
     }
     _ <- IO(println(s"result is $result"))
   } yield ()
-{% endhighlight %}
+```

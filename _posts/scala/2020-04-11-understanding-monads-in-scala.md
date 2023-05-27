@@ -31,18 +31,18 @@ Monads, help us abstract over the wrapping and unwrapping process and just makes
 
 To model our Monad, The blueprint of any monad is shown below, where Monad represents the class we want to make a Monad
 
-{% highlight scala %}
+```scala
  Monad[A] {
   def map[B](f : A => B) : Monad[B]
   def flatMap[B](f : A => Monad[B]) : Monad[B]
 }
-{% endhighlight %}
+```
 
 > The `map` method is basically you exposing an API for the user of this monad to manipulate the content of the Monad, which in our case will be a `Nut`, Note that all you can do is modify the contents of the Monad, and thereafter the result will be wrapped for you. The `flatMap` method, on the other hand, which is more powerful exposes an API for you to manipulate the contents of the current monad for you to use to generate a new Monad, it's a method to produce the _next_ computation from the value of the _current_ computation , so in our case, we can take the contents of a bag and not just modify the contents (like taking a part of the nuts we want, taking from some other types of nuts), but we then return any other kind of bag if we want containing any kind of nut.
 
 And type A represents the value we want to wrap, in our case, Nuts is modeled thus.
 
-{% highlight scala %}
+```scala
 sealed trait Nuts{
   val quantity : Int
   private val price : Double = 2.0
@@ -52,11 +52,11 @@ case class Peanut(quantity : Int) extends Nuts
 case class GroundNut(quantity : Int) extends Nuts
 case class CashewNut(quantity : Int) extends Nuts
 case class MixedNuts(quantity : Int) extends Nuts
-{% endhighlight %}
+```
 
 Now, let's create our Bag that should wrap these nuts and should also be a Monad
 
-{% highlight scala %}
+```scala
 case class Bag[A](item: A) {
   def map[B](f: A => B): Bag[B] = Bag(f(item))
   def flatMap[B](f: A => Bag[B]): Bag[B] = f(item)
@@ -64,7 +64,7 @@ case class Bag[A](item: A) {
 object Bag {
   def unit[A](v: A) = Bag(v) 
 }
-{% endhighlight %}
+```
 
 With the `map` and `flatMap` method, we can easily just operate on the contents of the bag of nuts without having to unwrap the bag, and then wrap it again. If you closely observe the `map` and `flatMap` method, they take care of the wrapping and unwrapping for us.
 
@@ -72,7 +72,7 @@ With the `map` and `flatMap` method, we can easily just operate on the contents 
 
 Now, let's go buy 3 types of nuts, and for some weird reason, when we are at checkout, we apply a discount to the first, remove 20 pieces from the second and double the quantity of the third. Modelling this with some utility functions, we have
 
-{% highlight scala %}
+```scala
 val cashewBag = Bag(CashewNut(40))
 val groundNutBag = Bag(GroundNut(40))
 val peanutBag = Bag(Peanut(40))
@@ -85,11 +85,11 @@ def applyDiscount(quantity : Int) : Int =
 
 def printTotal(nut : Nuts) : Unit =
  println(s"total is  ${result.item.total}")
- {% endhighlight %}
+ ```
 
 Now, If our Bag type wasn't a monad, the cleanest, regular non-monadic way to do this would have been this
 
-{% highlight scala %}
+```scala
 val newCashewBag = Bag(CashewNut(applyDiscount(cashewBag.item.quantity)))
 
 val newGroundBag = Bag(GroundNut(groundNutBag.item.quantity - 20))
@@ -99,13 +99,13 @@ val mixedNuts    = Bag(MixedNuts(newCashewBag.item.quantity +
                                    newPeanutBag.item.quantity))
 
 printTotal(mixedNuts.item)
-{% endhighlight %}
+```
 
 Looking at this code, we can see that it's not easily composable, there is always a call to get the item which unwraps the bag, performing some computation and then wrapping the result in a new Bag as underlined. We can also see that we are creating unnecessary `val` variables for each wrapping and unwrapping. Now, imagine we had over 100 kinds of nuts, this would easily have been a nightmare.
 
 But since our Bag class is a Monad, and because we have declared methods for manipulating contents of our monad, we see that we can easily and sequentially compose our computations without having to deal with wrapping and unwrapping anything or declaring unnecessary `val` variables.
 
-{% highlight scala %}
+```scala
 val result  =  for {
     a <- cashewBag.map(x => CashewNut(applyDiscount(x.quantity)))
     b <- groundNutBag.map(x => GroundNut(x.quantity + 20))
@@ -113,7 +113,7 @@ val result  =  for {
   } yield { MixedNuts(a.quantity + b.quantity + c.quantity) }
 
   printTotal(result.item)
-{% endhighlight %}
+```
 
 The beauty of this is that it's so clean and composable, the fact that the Monad has abstracted over wrapping and unwrapping its contents and just exposed the methods `map` and `flatMap` to deal with the contents of the wrapper.
 
@@ -141,14 +141,14 @@ The three monad laws according to the Haskell Wiki are informally expressed as
 
 As we test for these laws, let's define some functions `f`and `g` which are of type `A -> Monad[A]`, these are just functions that take a type A and return a Monad of type A, we will also define an object of type `Monad[A]` to carry out these tests on. In our case, `A` is `Nuts`.
 
-{% highlight scala %}
+```scala
 val cashew  = CashewNut(10)      // value
 val cashewBag = Bag(cashew)     // test Monad instance
 
 val f: CashewNut => Bag[CashewNut] = nut => Bag(CashewNut(nut.quantity + 30))
 
 val g: CashewNut => Bag[CashewNut] = nut => Bag(CashewNut(nut.quantity \* 50))
-{% endhighlight %}
+```
 
 I am testing on `CashewNut`, but the law will apply to all types of nuts. Now let's see what these laws are
 
@@ -172,9 +172,9 @@ return the same monad instance `X`, mathematically represented as
 **X.flatMap(unit) == X.** 
 
 Let's test this also
-{% highlight scala %}
+```scala
 println(cashewBag.flatMap(Bag.unit) == cashewBag)  // prints true 
-{% endhighlight %}
+```
 
 **ASSOCIATIVITY**
 
@@ -184,8 +184,8 @@ _**m.flatMap(f).flatMap(g) == m.flatMap(x ⇒ f(x).flatMap(g))**_
 
 Testing this law,
 
-{% highlight scala %}
+```scala
 println(cashewBag.flatMap(f).flatMap(g) == cashewBag.flatMap(x ⇒  f(x).flatMap(g)))  // prints true
-{% endhighlight %} 
+``` 
 
 We can clearly see that the Monad we just created is in fact, a mathematically correct Monad.

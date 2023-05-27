@@ -34,12 +34,12 @@ Fibers are like green threads. When using a for comprehension, the computations 
 Instead of waiting for the computation to finish, we could `fork` that computation to work on  
 another thread.  
 Example:
-{% highlight scala %}
+```scala
 for {
  e1 <- effect1.start
  e2 <- effect2
 } yield ()
-{% endhighlight %}
+```
 
 
 
@@ -68,7 +68,7 @@ Similar to threads, fibers can be joined too. Calling join on a fiber will block
 thread (thread that called 'join') until the fibers returns a result.
 
 Here's an example:
-{% highlight scala %}
+```scala
 def printMessagefromThread(msg: String) = {
  println(s"[${Thread.currentThread().getName}]: $msg")
 }
@@ -81,7 +81,7 @@ val prog =
   _ <- fiba.join
   _ <- IO(printMessagefromThread("After Join"))
  } yield ()
- {% endhighlight %}
+ ```
 
 which prints out:
 
@@ -96,7 +96,7 @@ It's worth noting that when we join a Fiber, execution continues on the thread t
 was running on, that explains why `After Join` was printed on another thread other than the one that printed `After Fork`
 
 Now, we can initially write our `myParMapN` like this :
-{% highlight scala %}
+```scala
 def myParMapN[A,B,C](ia : IO[A], ib: IO[B])(f : (A,B) => C) : IO[C] = {
   for {
    fib1 <- ia.start
@@ -105,7 +105,7 @@ def myParMapN[A,B,C](ia : IO[A], ib: IO[B])(f : (A,B) => C) : IO[C] = {
    b <- fib2.join
   } yield f(a,b)
 }
-{% endhighlight %}
+```
 
 #### Cancelling a Fiber
 
@@ -116,7 +116,7 @@ Fibers can be cancelled by calling cancel on the fiber (Fiber#cancel). Cancellat
 But calling join on a cancelled fiber. the join will never finish because no result will ever be produced which is opposite to regular threads that just return if we call join on an already terminated thread.
 
 A naiive way to cancel can be:
-{% highlight scala %}
+```scala
 def myParMapN[A,B,C](ia : IO[A], ib: IO[B])(f : (A,B) => C) : IO[C] = {
   for {
     fib1 <- ia.start
@@ -125,7 +125,7 @@ def myParMapN[A,B,C](ia : IO[A], ib: IO[B])(f : (A,B) => C) : IO[C] = {
     b <- fib2.join.onError({ case _ => fib1.cancel })
   } yield f(a,b)
 }
-{% endhighlight %}
+```
 Where we register an `onError` handler on the IO result produced by the fiber
 
 Registering an onErrorHandler is itself an effect, so it will only be registered after the fiber being joined has completed its join.
@@ -144,7 +144,7 @@ higher-order abstractions to handle cancellation. One of them is `IO#race` where
 > Run two IO tasks concurrently, and return the first to finish, either in success or error. The loser of the race is canceled. The two tasks are executed in parallel if asynchronous, the winner being the first that signals a result.
 
 Looking at this example:
-{% highlight scala %}
+```scala
 val task: IO[Unit] = IO.sleep(100 millis) *> IO(println("task"))
 val timeout: IO[Unit] = IO.sleep(200 millis) *> IO(println("timeout"))
 val program = for {
@@ -154,7 +154,7 @@ val program = for {
         case Right(_) => IO(println("timeout: won"))
       }
     } yield ExitCode.Success
-{% endhighlight %}
+```
 
 We see this when we run the program:
 

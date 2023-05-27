@@ -10,10 +10,10 @@ A higher-kinded type which is also called a type constructor describes types tha
 
 An example is the Option data type:
 
-{% highlight scala %}
+```scala
 val something:  Option =  ??? // not a valid type
 val otherthing : Option[Int] = ??? // valid type 
-{% endhighlight %}
+```
 
 Same goes for list, futures e.t.c
 
@@ -32,7 +32,7 @@ multiple structures, not just one.
 Imagine, we have a number of Option[Int] and we want to perform some sort of operation all of them in a functional manner, we could do that  
 using a for loop:
 
-{% highlight scala %}
+```scala
 val opt1 = Option(1)
 val opt2 = Option(2)
 val opt3 = Option(3)
@@ -42,7 +42,7 @@ val result = for {
   b <- opt2 
   c <- opt3 
 } yield a + b + c
-{% endhighlight %}
+```
 
 But with an applicative functor, we can combine the operations using one of the `mapN` methods.
 

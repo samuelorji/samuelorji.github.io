@@ -48,7 +48,7 @@ The Cats effect Library supports this pattern by encouraging separate contexts.
 - IO bound work (using an unbounded thread pool so blocked threads merely take memory and don't prevent other tasks from running)
 
 For IO bound tasks, cats effect provides a small wrapper around a Cached Thread pool execution context called a Blocker for execution.
-{% highlight scala %}
+```scala
   val prog =  Blocker.apply[IO].use{ blocker =>
     withBlocker(blocker).as(ExitCode.Success)
   }
@@ -60,15 +60,15 @@ For IO bound tasks, cats effect provides a small wrapper around a Cached Thread 
       _ <- IO("<---- Thread I'm on").debug
     } yield ()
   }
-{% endhighlight %}
+```
 
 Here's what we see on the console
 
-{% highlight bash %}
+```bash
 [ioapp-compute-0] on IOapp threadpool
 [cats-effect-blocker-0] on blocker
 [ioapp-compute-1] <---- Thread I am on
-{% endhighlight %}
+```
 
 We can clearly see that the blocking effect was executed on another thread pool  
 `cats-effect-blocker-*` pool other than the one the previous effect ran on `ioapp-compute`
@@ -86,7 +86,7 @@ Let's take the ticking clock example we designed a while back , It won't make se
 
 We can insert asynchronous boundaries and control to an extent the threads within a context that we want our effects to run using the IO.shift method If we run this code:
 
-{% highlight scala %}
+```scala
 object Shifting extends IOApp {
  def run(args: List[String]): IO[ExitCode] =
   for {
@@ -97,15 +97,15 @@ object Shifting extends IOApp {
    _ <- IO("three").debug
   } yield ExitCode.Success
 }
-{% endhighlight %}
+```
 
 
 We get
-{% highlight bash %}
+```bash
 [ioapp-compute-0] one
 [ioapp-compute-1] two
 [ioapp-compute-2] three
-{% endhighlight %}
+```
 
 It's obvious that for every shift, the next effect runs in a different thread in the same context.  
 This is what inserting an async boundary means, where the next effect is made to run on another thread
@@ -115,13 +115,13 @@ The IO.sleep method does this because if blocked the current thread for the dura
 > Cats Effect inserts an async boundary at runtime every 512 flatMap calls. This is a kind of fail-safe—if you forget to add a boundary yourself, the library will ensure that a composed effect can’t re-use the same thread for very long
 
 The IO.shift is overloaded as it can also take an execution context as a parameter, so it's possible to switch effects to a different execution context rather than a different thread.
-{% highlight scala %}
+```scala
  val ec = ExecutionContext.Implicits.global
   val program = for {
     _ <- IO.shift(ec)
     _ <- IO(println(s"I am running on ${Thread.currentThread().getName}"))
   } yield ()
-{% endhighlight %}
+```
 which prints out:
 
 `I am running on scala-execution-context-global-12`

@@ -18,7 +18,7 @@ The function signature looks like this
 The function signature may seem a little daunting, but the basic idea is that you call the method and complete the callback at the end of the computation with either a `Left` or a `Right`
 
 Now, for a contrived example, let's imagine we have an asynchronous method that returns an Int, and we want to lift that into an IO, we could do it like this:
-{% highlight scala %}
+```scala
 object IOAsyncExample extends IOApp {
   val ec = Executors.newCachedThreadPool()
 
@@ -54,7 +54,7 @@ object IOAsyncExample extends IOApp {
     } yield ExitCode.Success
   }
 }
-{% endhighlight %}
+```
 
 With this, we've been able to encapsulate or lift our async computation into an IO. This is more or less the basis for the utility method to lift a future into an IO: `IO.fromFuture`
 

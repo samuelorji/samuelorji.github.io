@@ -4,6 +4,7 @@ title: Feature images
 feature-img: "assets/img/feature-img/desk-messy.jpeg"
 thumbnail: "assets/img/thumbnails/feature-img/desk-messy.jpeg"
 tags: [Test, Image]
+hide: true
 categories: Example
 ---
 

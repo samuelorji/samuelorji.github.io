@@ -23,10 +23,10 @@ either explicitly or through type inference:
 
 We could also transform futures into IO, which makes it really easy to integrate with legacy codebase:
 
-{% highlight scala %}
+```scala
 def futureLong : Future[Long] = ???
 val ioFromFuture = IO.fromFuture(IO(futureLong))
-{% endhighlight %}
+```
 
 It may ask for an implicit context shift, which is provided if run with the cats IOApp instead of the scala native App
 
@@ -42,12 +42,12 @@ It is also an applicative functor, so we can combine and operate on multiple val
 
 It is also a Monad, so we can flatMap over it as well as use it in a for comprehension:
 
-{% highlight scala %}
+```scala
 for {
   i <- IO(3)
   j <- IO(4)
 } yield i +  j // IO(7)
-{% endhighlight %}
+```
 
 ### Error Handling:
 
@@ -57,10 +57,10 @@ Similar to Futures, we can raise and deal with errors in IO:
 
 we can also recover from errors too:
 
-{% highlight scala %}
+```scala
 result.handleError(_ => 40) // similar to Future#recover 
 result.handleErrorWith(_ => IO(40)) // simialr to Future#recoverWith 
-{% endhighlight %}
+```
 
 If you want to your error type to be explicitly seen in the type signature, we cal easily call IO#attempt  
 which returns an IO[Either[Throwable,A]]:

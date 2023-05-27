@@ -2,9 +2,11 @@
 layout: post
 title: The Real Lorem Ipsum
 tags: [Image, Color]
+hide: true
 color: turquoise
 excerpt_separator: <!--more-->
 categories: Demo
+hide: true
 ---
 
 ## Lorem Ipsum

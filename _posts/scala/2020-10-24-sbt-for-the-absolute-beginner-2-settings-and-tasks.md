@@ -61,22 +61,22 @@ What did we just do here, remember that we defined our `srcFile` setting key t
 
 For all we care, we could have done something like this
 
-{% highlight scala %}
+```scala
 srcFile := {  //some other computation   
   val currentTime: String = new java.util.Date().toString  
   println(time)  
   new java.io.File("Path/to/build.sbt") //return type : File   
 }
-{% endhighlight %}
+```
 
 The only thing in this case is that when `srcFile` is called the first time, it will run the computation first and print the current time also but not on other calls to `srcFile`. So not really what we want right :)
 
 Another way we can assign a `File` as a value to the `srcFile` key is
 
-{% highlight scala %}
+```scala
 //key         //value    
 srcFile := baseDirectory.value / "src"
-{% endhighlight %}
+```
 
 Woah Woah Woah… what on earth did we just do, err …. you said we could only assign a File to the `srcFile` setting, then why am I not seeing any call to java’s File class. Well, do you remember us saying that calling `.value` on a setting returns the actual value of the setting which is a concrete type?. Well in SBT, there are some predefined settings and one of them is `baseDirectory` which defines the root (or base ….duurh ) directory of your project, which is a java File, so calling `.value` on the setting returns a File, now the `/` function is just syntactic sugar for constructing file paths, returning new files when called. So in reality, what we did is similar to `new File("base_directory/src")` You can therefore see that what we did is actually valid. We actually did assign a file as a value to the `srcFile` setting.
 
@@ -84,10 +84,10 @@ Woah Woah Woah… what on earth did we just do, err …. you said we could only 
 
 Now, provided we are in our sbt shell, if we type in `srcDir` , it should actually show you the path of the file assigned to it, in my case it shows this.
 
-{% highlight bash %}
+```bash
 > srcFile  
 [info]/tmp/phony/build.sbt
-{% endhighlight %}
+```
 
 We have defined our setting which is basically a variable that points to the `build.sbt` file we want to Zip, that’s not all as all this command is a setting, pretty similar to a variable and all it does is return a file path, now let us create the task that will do the actual work of Zipping the file for us.
 
@@ -103,12 +103,12 @@ You may see that similar to the setting, we actually called another predefined s
 
 Now, start a new sbt shell to capture the changes made to the`build.sbt`file or enter `reload`in the previous shell to reload sbt and thus capture the recent changes in the project. Now, if we type in the command`zip` into sbt, it should zip the files for us. My own console output is
 
-{% highlight bash %}
+```bash
 > zip  
 [info]zipping files from /tmp/phony/build.sbt  
 [info]zipping files to /tmp/phony/build.sbt.zip  
 [success] Total time: 0 s, completed Dec 15, 2019 3:42:04 PM
-{% endhighlight %}
+```
 
 ![](/assets/images/zipper.png)
 
@@ -135,21 +135,21 @@ Let’s explain what we just did here.
 First, we defined a task `fetchConfFile` that simulates fetching data from a remote source, in our case we just slept for a second and created a new file named `application.conf` . Then we kinda modified our `zip` task to actually zip the file gotten from the `fetchConfFile`task along with the `build.sbt` file.
 
 Now, if we run `zip`, I get this console output
-{% highlight bash %}
+```bash
 > zip  
 [info] fetching file ......   
 [info] done fetching file ....   
 [info] zipping files from /tmp/phony/build.sbt  
 [info] zipped files to /tmp/phony/build_and_config.zip  
 [success] Total time: 0 s, completed Dec 15, 2019 5:01:40 PM
-{% endhighlight %}
+```
 
 If you’re attentive, you’ll notice a difference in the console output, this for some reason runs the `fetchConfFile` task before the actual zip task, you should expect that it should at least log `zipping files from /tmp/phony/build.sbt` before running the `fetchConfFile`, but in reality, the `fetchConfFile` task was actually executed first despite the fact that the call to `logger.info` was written before it. This is in line with the DAG that we previously said SBT created on each project build. [**See the docs for a little more clarity**](https://www.scala-sbt.org/1.x/docs/Tasks.html)**.**
 
 > As we should know by now, tasks can be made to depend on other settings and tasks as well as settings depending only on other settings. This thus means that if lets say a task depends on another task, then the task it depends on will be executed first before the actual task itself.
 
 To see dependencies of a task or setting, there is a handy command in sbt called `inspect` that actually outlines the name of the task, its description, dependencies e.t.c
-{% highlight bash %}
+```bash
 > inspect zip  
 [info] Task: Unit    
 [info] Description  
@@ -167,24 +167,24 @@ To see dependencies of a task or setting, there is a handy command in sbt called
 [info]  zip  
 [info]  ThisBuild / zip  
 [info]  Global / zip
-{% endhighlight %}
+```
 The inspect command shows that `zip` is a Task with return type of Unit, it also shows the description supplied in the taskKey function. You can see the Dependencies for the `zip` task, how SBT knows that it depends on the `fetchConfFile` task, as well as `baseDirectory`, `srcFile` and `sLog` too.
 
 Another pretty cool command is `show` which executes and prints the return value of a task or setting in sbt.
-{% highlight bash %}
+```bash
 > show zip  
 [info]fetching file ......   
 [info]done fetching file ....   
 [info]zipping files from /tmp/phony/build.sbt  
 [info]zipped files to /tmp/phony/build_and_config.zip  
 [info]()
-{% endhighlight %}
+```
 You can see it actually executed the task and then printed out the return value `()` which is just Unit in scala.
 
 Tasks and settings can also be modified, Imagine that we want to delete the existing zipped folder everytime we run `zip` , remember there is an sbt command called `clean` which basically deletes files produced by the build, such as generated sources, compiled classes, and task caches resulting from the `compile` task. Running `inspect clean` in your sbt console shows that it depends on a setting called `cleanFiles` which is simply a list of files to be deleted whenever the clean command is called. So what we can do is append our zipped file `build.sbt.zip` to the list of files to be cleaned, so that whenever we are cleaning the project, we also clean the zipped file we generated from the `zip` command and generate a new zipped file everytime as shown below.
-{% highlight scala %}
+```scala
 cleanFiles := (baseDirectory.value / "build.sbt.zip")                                           +: cleanFiles.value
-{% endhighlight %}
+```
 ## **FINAL THOUGHTS**
 
 We have but just scratched the surface of sbt, there are still other dimensions that I didn’t touch. My main goal was to provide a very basic understanding of SBT, as well as provide a good foundation for reading and writing **build.sbt** files.

@@ -2,6 +2,7 @@
 layout: post
 title: Color Post
 tags: [Test, Color]
+hide: true
 color: brown
 author: sylhare
 categories: Example

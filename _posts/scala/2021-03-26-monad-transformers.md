@@ -8,7 +8,7 @@ tags: cats fp functional-programming scala
 Before we start talking about monad transformers, let's talk about why we may need them.  
 Let's say we define the following classes and functions in this contrived example:
 
-{% highlight scala %}
+```scala
   case class User(name : String) extends AnyVal
   case class Order(order : String) extends AnyVal
   case class DeliveryDetails(detail : String) extends AnyVal
@@ -16,11 +16,11 @@ Let's say we define the following classes and functions in this contrived exampl
   def getUser(name : String) : Future[Option[User]] = ???
   def getOrder(user : User) : Future[Option[Order]] = ???
   def getDeliveryDetails(order : Order) : Future[Option[DeliveryDetails]] = ???
-{% endhighlight %}
+```
 
 If we want to get the delivery details of a particular user, we can easily do this via a for-comprehension:
 
-{% highlight scala %}
+```scala
 def deliveryDetails : Future[Option[DeliveryDetails]] =  {
     for {
       maybeUser <- getUser("user")
@@ -36,7 +36,7 @@ def deliveryDetails : Future[Option[DeliveryDetails]] =  {
       }
     }  yield maybeDeliveryDetails
   }
-{% endhighlight %}
+```
 
 It's easy to see that there's a pattern of pattern matching (excuse my pun) on the optional values, and as the for-comprehension gets complicated, we soon start seeing nested pattern matching on type constructors.
 
@@ -44,7 +44,7 @@ Now, in our case, we are only concerned about the success case of these type con
 
 Our life could also have been made easier, if the scala compiler allowed for this kinda syntax:
 
-{% highlight scala %}
+```scala
 def deliveryDetailsOpt : Future[Option[DeliveryDetails]] = {
     for {
       user <- maybeUser <- getUser("person_1") 
@@ -52,7 +52,7 @@ def deliveryDetailsOpt : Future[Option[DeliveryDetails]] = {
       deliveryDetails <- maybeDeliveryDetails <- getDeliveryDetails(order)
     } yield deliveryDetails 
   }
-{% endhighlight %}
+```
 
 But Sadly, the scala compiler doesn't really permit that :)
 
@@ -68,7 +68,7 @@ In our example, we are dealing with an `Option`, that is wrapped in another type
 
 Let's define a simple type that will help achieve this composability:
 
-{% highlight scala %}
+```scala
  case class FutOpt[A](value : Future[Option[A]]){
     def map[B](f : A => B) : FutOpt[B] = {
       FutOpt(value.map(_.map(f)))
@@ -80,13 +80,13 @@ Let's define a simple type that will help achieve this composability:
       FutOpt(value.flatMap(_.fold(Future.successful(None : Option[B]))(f(_).value)))
     }
   }
-{% endhighlight %}
+```
 
 What we've done is quite simple, we've extended the map function to apply to both the `Option` contained within the `Future` and the Future itself, similarly, the flatMap function is applied to both type constructors.
 
 A slightly more expressive way to write the flatMap is shown below:
 
-{% highlight scala %}
+```scala
 def flatMap[B](f : A => FutOpt[B]) : FutOpt[B] = {
   // if the option is empty, return a Future.successful
   // else call the flatMap function on the non empty option
@@ -96,11 +96,11 @@ def flatMap[B](f : A => FutOpt[B]) : FutOpt[B] = {
   }
   FutOpt(next)
 }
-{% endhighlight %}
+```
 
 With this class, we have abstracted over the outer type constructor which is a `Future` in our case and provided a way to functionally interact directly with the inner type constructor without having to pattern match as seen using our previous example:
 
-{% highlight scala %}
+```scala
 def op : FutOpt[DeliveryDetails] = {
     for {
       user <- FutOpt(getUser("person_1"))
@@ -110,13 +110,13 @@ def op : FutOpt[DeliveryDetails] = {
   }
 
   val deliveryDetails = op.value
-{% endhighlight %}
+```
 
 Voila, we have simplified our for-comprehension by defining a simple monad transformer which is just another bigger monad "composed" of other monads.
 
 We could also define a simple monad transformer for List of options too:
 
-{% highlight scala %}
+```scala
 case class ListOpt[A](value : List[Option[A]]){
     def map[B](f : A => B) : ListOpt[B] = {
       ListOpt(value.map(_.map(f)))
@@ -126,21 +126,21 @@ case class ListOpt[A](value : List[Option[A]]){
       ListOpt(value.flatMap(_.fold(Nil : List[Option[B]])(f(_).value)))
     }
   }
-{% endhighlight %}
+```
 
 If we really look at the function signatures of these toy monad transformers, we can see that they all have a map and flatMap method that enables them being used in for-comprehensions. We could easily abstract that functionality into a monad trait:
 
-{% highlight scala %}
+```scala
  trait Monad[F[_]] {
     def pure[A](a: => A): F[A]
     def map[A, B](fa: F[A])(f: A => B): F[B]
     def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
   }
-{% endhighlight %}
+```
 
 We can then define our generic optional monad transformer thus:
 
-{% highlight scala %}
+```scala
   case class MonadFOpt[F[_],A](value : F[Option[A]])(implicit monad : Monad[F]){
     def map[B](f : A => B) : MonadFOpt[F,B] = {
       MonadFOpt(monad.map(value)(_.map(f)))
@@ -150,13 +150,13 @@ We can then define our generic optional monad transformer thus:
       MonadFOpt(monad.flatMap(value)(_.fold(monad.pure[Option[B]](None))(f(_).value)))
     }
   }
-{% endhighlight %}
+```
 
 We have defined a generic optional monad transformer, that can abstract over any F[_] type provided there's a monad instance in scope.
 
 We can rewrite our previous examples like this:
 
-{% highlight scala %}
+```scala
   implicit val futMonad = new Monad[Future] {
       override def pure[A](a: => A): Future[A] = Future.successful(a)
 
@@ -175,7 +175,7 @@ We can rewrite our previous examples like this:
   }
   
   val deliveryDetails: Future[Option[DeliveryDetails]] = op.value
-  {% endhighlight %}
+  ```
 
 If you understand all of this, congratulations, you understand the basics of Monad transformers, We could also define transformer for other type constructors such as Either, Try e.t.c.
 

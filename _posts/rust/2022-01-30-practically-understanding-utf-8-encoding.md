@@ -24,13 +24,13 @@ We see that our file size is now 8 bytes. But we only added a single Chinese cha
 The answer to that is that our text file is UTF-8 encoded, so some characters need a single byte, while some others need more than one byte.
 
 The English alphabet typically needs one byte or 8 bits to store every possible English character. We can see it here in this [ASCII chart](https://www.cs.cmu.edu/~pattis/15-1XX/common/handouts/ascii.html). ASCII is simply just some convention to map characters or symbols to a number. To make sense of the ASCII chart, let's print out each character in our text file without the Chinese character. According to our chart, the characters "hello" should be 104, 101, 108, 108, 111. This simple rust code shows that:
-{% highlight rust %}
+```rust
 let res  = std::fs::read("sample.txt").unwrap();
     println!("character:t number");
     for elem in res {
         println!("  {}tt {}",elem as char,&elem)
     }
-{% endhighlight %}
+```
 
 Which prints out :
 
@@ -66,12 +66,12 @@ Now, we can see that our Chinese Character falls in the 3rd code block that need
 Before we go into how this character is encoded into bytes, let's just see the binary as well as hex representation each character in our text file that contains the Chinese character:
 
 This piece of rust code helps us:
-{% highlight rust %}
+```rust
 println!("character: t Binary:t decimal t");
 for elem in res {
   println!("  {}\t\t{:#010b}t  {}",elem as char,&elem,&elem)
 }
-{% endhighlight %}
+```
 
 Our output is:
 
