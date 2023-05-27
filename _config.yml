@@ -1,6 +1,6 @@
 # SITE CONFIGURATION
 baseurl: ""
-url: "https://blog.samuelorji.com"
+url: "https://samuelorji.github.io"
 show_drafts: false
 
 
