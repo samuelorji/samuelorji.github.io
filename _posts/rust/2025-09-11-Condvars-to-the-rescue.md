@@ -464,7 +464,7 @@ fn main() {
 
 
 #### 2. Explicitly Dropping the Mutex:
-I think this goes without saying, but ensure your mutex is only acquired when you need it and dropped immediately after use, if a mutex is held longer than needed, it can cause issue. This gets worse if your mutex is held in a loop like in our case. 
+I think this goes without saying, but ensure your mutex is only acquired when you need it and dropped immediately after use, if a mutex is held longer than needed, it can cause issues. This gets worse if your mutex is held in a loop like in our case as it will lead to a deadlock. The counter thread never lets go of the mutex and as such, the input thread can't acquire the mutex and pause it. 
 
 The mutex can be dropped explicitly by calling the `drop` method, or by introducing local scopes for the mutexes that drop them once the local scope is out of scope (pun intended).
 
